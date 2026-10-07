@@ -1,0 +1,290 @@
+---
+title: "MATH 205 Final Project: Relationship Between Brain and Body Mass in Mammals"
+author: "Jake Nguyen"
+date: "Spring 2026"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 6, fig.height = 4, fig.align = "center")
+library(tidyverse)
+library(knitr)
+set.seed(205)
+```
+
+---
+
+> **Student Name:** Jake Nguyen  
+> **Section:** 02  
+> **Dataset:** Mammal Brain and Body Size  
+> **Inferential Approach:** Option C  
+
+---
+
+\newpage
+
+# Introduction
+
+*Write 1-2 paragraphs answering:*
+
+- *What is your dataset and where does it come from?*
+- *What is your research question?*
+- *Why is this biologically or scientifically interesting?*
+- *What do you expect to find and why?*
+
+**The data set used for this analysis is the Mammal Brain and Body Size data set. This has a list of measurements of different mammals brain mass and body mass. By examining many species rather than one, it allows for a more general insight into how biological scaling relationships work in nature. My research question is "How does body mass relate to brain mass across species and does the relationship follow an allometric (nonlinear) or linear scaling pattern?". This question is interesting because it connects to some fundamental principles in biology such as the square-cube law, which describes how volume increases faster than surface area. When applied in context, it also an mean how structural support increases as size increases. Understanding this relationship can explan how organs of mammals like the brain scale with body size. This can provide insight to evolutionary adaptations. I expect to find a positive relationship between body mass and brain mass, since larger animals usually have bigger brains. But, I think that this relationship will be nonlinear or brain mass increases slower than body mass which is consistent with other allometric scaling principles in biology.**
+
+---
+
+# Data Description
+
+## Loading the Data
+
+```{r load-data}
+# ----------------------------------------------------------
+# Load your dataset here.
+# Replace the filename with the dataset you are using.
+# All datasets are CSV files downloaded from Brightspace.
+# ----------------------------------------------------------
+
+df <- read_csv("Dataset2_Mammal_Brain_Body.csv")   # change this line
+
+# Always check the first few rows
+head(df)
+
+# Check dimensions: rows = observations, columns = variables
+dim(df)
+```
+
+## Summary Statistics
+
+```{r summary-stats}
+# ----------------------------------------------------------
+# Create a summary statistics table.
+# Replace variable names with the ones in YOUR dataset.
+# ----------------------------------------------------------
+
+# Option 1: Quick summary of the whole dataset
+summary(df)
+
+# Option 2: A focused summary table for your key variable
+# (change 'beak_depth_mm' and 'species' to match your data)
+df %>%
+  group_by(species) %>%
+  summarise(
+    n           = n(),
+    mean        = round(mean(body_mass_kg, na.rm = TRUE), 2),
+    sd          = round(sd(body_mass_kg,   na.rm = TRUE), 2),
+    min         = round(min(body_mass_kg,  na.rm = TRUE), 2),
+    max         = round(max(body_mass_kg,  na.rm = TRUE), 2)
+  ) %>%
+  kable(caption = "Summary Statistics by Species",
+        col.names = c("Species", "n", "Mean", "SD", "Min", "Max"))
+```
+
+*Describe what you observe in the summary statistics. Comment on center, spread, and any notable features.*
+
+**For body mass, the median is 55kg while the mean is way above that at 1641.6kg. And this big difference suggests there is an outlier or right skew in the distribution. The range of the data is 0.023kg to 87000kg which tells us there is very big variation among the species in the sample. The first and third quartile are 6,5kg and 177.5kg which are relatively small compared to the mean. So there are a few large animals that inflate the mean. Same with the brain mass the median at 119.5g is much smaller than the mean at 395.3g. Ranges of brain mass in grams are 0.3 to 6800. The IQR of brain mass tells us that most species have a small to medium sized brains. Both distributions are heavily right skewed.**
+
+---
+
+# Exploratory Data Analysis
+
+*Create at least TWO visualizations. Each plot must have a descriptive title and labeled axes. Write 2-3 sentences interpreting each one.*
+
+
+## Visualization 1: Residual Plot: log(Brain Mass) vs log(Body Mass)
+
+```{r plot2}
+
+# Log-transform variables
+df$log_brain <- log(df$brain_mass_g)
+df$log_body  <- log(df$body_mass_kg)
+
+# Log-log model
+model_log <- lm(log_brain ~ log_body, data = df)
+
+# Add residuals and fitted values
+df$resid_log <- resid(model_log)
+df$fitted_log <- fitted(model_log)
+
+# Residual plot (log model)
+ggplot(df, aes(x = fitted_log, y = resid_log)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red") +
+  labs(title = "Residual Plot: Log(Brain Mass) vs Log(Body Mass)",
+       x = "Fitted Brain Mass (g)",
+       y = "Residuals") +
+  theme_minimal()
+```
+
+*What does this plot tell you? Are there visible differences between groups?*
+
+**The residuals are for the most part close to 0 and there is no pattern from the dots. There are a few outliers, but it doesn't look like a pattern. There isn't any grouping of points. So the residuals are randomly distributed around 0 which suggests a linear relationship on a log scale. The tells us the log-log model is appropiate and shows a nonlinear relationship between body mass in kg and brain mass in g.**
+
+## Visualization 2
+
+```{r plot3}
+# ----------------------------------------------------------
+# EXAMPLE: Scatterplot with regression line
+# ----------------------------------------------------------
+
+ggplot(df, aes(x = body_mass_kg, y = brain_mass_g)) +
+  geom_point(alpha = 0.5, color = "steelblue") +
+  geom_smooth(method = "lm", se = TRUE, color = "tomato") +
+  labs(
+    title = "Brain Mass vs. Body Mass Across Species",
+    x     = "Body Mass (kg)",
+    y     = "Brain Mass (g)"
+  ) +
+  theme_minimal()
+```
+
+**The plot shows a obvious positive relationship between body mass and brain mass. Species that are larger will tend to have larger brains. Most species are  at the bottom left and this tells us that most of the species in the dataset are small. There are outlier animals like whales and elephants that influence the regression line a lot. And as body mas increases brain mass is more spread out. Most of the smaller animals have clustered brain sizes.**
+
+---
+
+# Statistical Analysis
+
+*Complete ONLY the section that matches your chosen inferential option (A, B, or C). Delete the other two sections before submitting.*
+
+---
+
+## OPTION C: Regression Analysis
+
+### Research Question
+
+*What relationship are you modeling? What is your explanatory variable (x)? What is your response variable (y)?*
+
+**I'm modeling the relationship between body mass and brain mass around many species with the goal to understand how brain size changes relative to body size increase. Explanatory variable is log (body mass in kg) and response variable is log (brain mass in g).**
+
+### Check Assumptions
+
+```{r assumptions-C}
+# ----------------------------------------------------------
+# Fit the model first, then check assumptions visually
+# ----------------------------------------------------------
+
+model <- lm(body_mass_kg ~ brain_mass_g, data = df)
+model1 <- lm(log(body_mass_kg) ~ log(brain_mass_g), data = df)
+
+par(mfrow = c(1, 2))
+plot(model, which = 1)
+plot(model, which = 2)
+
+par(mfrow = c(1, 2))
+plot(model1, which = 1)
+plot(model1, which = 2)
+```
+
+*Are the assumptions of linearity, normality of residuals, and equal variance met? Describe what you see in each plot.*
+
+**In the residuals vs fitted plot, there is a downward pattern instead of random scatter which shows that the relationship is not linear. The spread of the residuals also increases a lot as the fitted values grow which indicates unequal variance. Also, there are some extreme points that make this even more noticeable. Looking at the Q-Q plot, the points deviate strongly from the straight line especially in the tails, which suggests the residuals are not normally distributed. So, this model does not satisfy linearity, normality, or equal variance. In the residuals vs fitted plot, the points are much more randomly scattered, but there is still a slight curve. This suggests the linearity assumption is mostly improved. The spread of the residuals looks more consistent across the range of fitted values so the equal variance assumption is more reasonable. The points follow the line in the Q-Q plot more closely than before. There is still some deviation in the tails which indicates slight non-normality. So, the log transformation improves all the assumptions and makes the model much more appropriate but not perfect. **
+
+### Fit the Model and Interpret
+
+```{r regression}
+# ----------------------------------------------------------
+# Full regression summary
+# ----------------------------------------------------------
+
+summary(model)
+
+# Print key values
+cat("Intercept (b0):", round(coef(model)[1], 4), "\n")
+cat("Slope (b1):",     round(coef(model)[2], 4), "\n")
+cat("R-squared:",      round(summary(model)$r.squared, 4), "\n")
+cat("p-value for slope:",
+    round(summary(model)$coefficients[2, 4], 4), "\n")
+
+# 95% CI for the slope
+confint(model)
+```
+
+### Scatterplot with Regression Line
+
+```{r regression-plot}
+ggplot(df, aes(x = body_mass_kg, y = brain_mass_g)) +
+  geom_point(alpha = 0.5, color = "steelblue") +
+  geom_smooth(method = "lm", se = TRUE, color = "tomato") +
+  labs(
+    title = "Linear Regression: Body Mass vs. Beak Depth",
+    x     = "Body Mass (g)",
+    y     = "Beak Depth (mm)"
+  ) +
+  theme_minimal()
+```
+
+### Prediction
+
+```{r prediction}
+# ----------------------------------------------------------
+# Predict the response for a new x value
+# Change the value to something meaningful for YOUR data
+# ----------------------------------------------------------
+
+new_x <- data.frame(brain_mass_g = 20)
+predict(model, newdata = new_x, interval = "prediction", level = 0.95)
+```
+
+*Write your full interpretation. Include:*
+*- The regression equation (y-hat = b0 + b1*x)*
+*- Interpretation of the slope in context (one unit increase in x...)*
+*- R-squared: what percent of variation is explained?*
+*- The p-value for the slope and your decision*
+*- Your prediction and what it means*
+
+**The regression equation is (y-hat = -1386.551 + 7.6612x). For every 1g increase in brain mass, the predicted body mass increases by about 7.66kg which suggests a strong positive relationship between body and brain mass. R^2 is 0.5999 so about 60% of the variation in body mass is explained by brain mass. The other 40% is due to other factors like random variability or other factors. p-val is basically 0, so <0.05 so we rejct the null hypothesis. There is strong statistical evidence that brain mass is a significant predictor of body mass. The prediction is fit: -1233.327 and 95% CI (-15322.74, 12856.08). The model predicts a body mass of approximately -1233.33 kg for the given brain mass value. But this prediction is not realistic since body mass cannot be negative which suggests the model is not appropriate for extrapolation at that value. Individual body mass values for brain mass could fall anywhere between about -15322 and 12856 kg which shows very high uncertainty.**
+
+---
+
+# Conclusion
+
+*Write 1-2 paragraphs addressing:*
+
+- *What did you find? Summarize your main result in plain language.*
+- *What does this mean biologically or scientifically?*
+- *What are the limitations of your analysis?*
+- *What would you investigate next?*
+
+**I found a clear positive relationship between body mass and brain mass across speices. Larger animals tend to have larger brains. The relationship is not purely linear on the original scale. A log-log model suggests a nonlinear scaling patterm where brain mass increases slower than body mass. This is shown in the improved residual pattersn after the transformation. 60% of the variation in body mass is explained by brain mass which indicates a strong relationship but not the only thing that determines it. This reflects how species allocate energy/ structure as they get bigger. Larger animals don't scale up their structure proportionally which is consistent with other know scaling laws and evolutionary restrictions. **
+**There are some limitations to my analysis like how the dataset I used was pretty skewed due to large animals like elephants and whales having a big influence. Even after the log transform, the assumptions weren't met. Brain mass does not capture all factors influencing body size like evolutionary histpry or behavior. The model made some unrealistic predictions in some cases so it can't be used for extrapolating to other animals. I would like to investigate other variables like habitat or metabolic rate next.**
+---
+
+# References
+
+1. Dataset 2: Mammal Brain and Body Size (provided by Professor Dabagh)
+2. Whitlock, M.C. and Schluter, D. (2020). *The Analysis of Biological Data* (3rd Edition). Macmillan Learning.
+
+---
+
+\newpage
+
+# Submission Checklist
+
+Before posting to Brightspace:
+
+- [ ] My name, section, and dataset are at the top
+- [ ] `set.seed(205)` is in the setup chunk
+- [ ] At least TWO ggplot2 plots with descriptive titles and labeled axes
+- [ ] I completed ONLY the correct inferential section (A, B, or C) and deleted the others
+- [ ] All code runs without errors
+- [ ] My .Rmd knits to PDF successfully
+- [ ] I interpreted all results in biological context (not just numbers)
+- [ ] My Brightspace summary follows the Summary Template (200-300 words)
+
+**Submit to Brightspace Discussion:**
+
+1. `LastName_FirstName_MATH205_Project.Rmd`
+2. `LastName_FirstName_MATH205_Project.pdf` (attach to post)
+3. Written summary in the body of your post
+
+---
+
+*Questions? Office Hours: TR 12:45-1:30 PM | UNH 2753 | safaa.dabagh@lmu.edu*
